@@ -5,9 +5,12 @@ const displayInputLine = document.querySelector("#input-line");
 const equalBtn = document.querySelector("#equal");
 const resetBtn = document.querySelector("#reset");
 const deleteBtn = document.querySelector("#delete");
+const oppositeBtn = document.querySelector("#opposite");
+const sqrtBtn = document.querySelector("#sqrt");
 
 let isOn = false;
 let isEqualPressed = false;
+let operation = [undefined, undefined];
 
 // Power on and reset
 resetBtn.onclick = () => {
@@ -22,6 +25,7 @@ function reset() {
   currentInput = "";
   storedInput = "";
   operationSymbol = "";
+  operation = [undefined, undefined];
 }
 
 // Display input
@@ -34,62 +38,91 @@ for (let i = 0; i < buttons.length; i++) {
 function typeNumber() {
   if (!isOn) return;
   if (isEqualPressed) {
+    reset();
     displayExpressionLine.textContent = "";
     isEqualPressed = false;
   }
-  if (currentInput === "") {
-    displayInputLine.textContent = "";
-  }
   if (currentInput.length < 13) {
+    if (this.textContent === "." && String(currentInput).includes(".")) return;
     currentInput += `${this.textContent}`;
     displayInputLine.textContent = currentInput;
   }
 }
 
 deleteBtn.onclick = () => {
-  if (currentInput !== "")
+  if (isEqualPressed) {
+    reset();
+    displayExpressionLine.textContent = "";
+    displayInputLine.textContent = "0";
+    isEqualPressed = false;
+  } else if (currentInput !== "") {
     currentInput = currentInput.substr(0, currentInput.length - 1);
-  displayInputLine.textContent = currentInput;
+    displayInputLine.textContent = currentInput;
+  }
 };
 
-// Operazioni
+// Opposite button
+oppositeBtn.onclick = () => {
+  result = Number(displayInputLine.textContent) * -1;
+  displayInputLine.textContent = result;
+  console.log(result, currentInput);
+};
+
+// Main operations
 for (let i = 0; i < buttons.length; i++) {
   if (buttons[i].getAttribute("data-type") === "operation") {
-    buttons[i].addEventListener("click", function () {
-      if (!isOn) return;
-
-      console.log(this.textContent);
-      if (this.textContent.trim() !== "/") {
-        operationSymbol = this.textContent;
-      } else {
-        operationSymbol = ":";
-      }
-
-      displayExpressionLine.textContent += `${
-        currentInput + operationSymbol.trim()
-      }`;
-      if (storedInput === "") {
-        storedInput = currentInput;
-      } else {
-        calculate(storedInput, currentInput, operation);
-        storedInput = result;
-        displayInputLine.textContent = result;
-      }
-      currentInput = "";
-      operation = this.getAttribute("id");
-    });
+    buttons[i].addEventListener("click", selectOperation);
   }
+}
+
+function selectOperation() {
+  if (!isOn) return;
+  if (this.textContent.trim() !== "/") {
+    operationSymbol = this.textContent.trim();
+  } else {
+    operationSymbol = "÷";
+  }
+
+  if (isEqualPressed) {
+    isEqualPressed = false;
+    storedInput = result;
+    currentInput = "";
+    displayExpressionLine.textContent = storedInput + operationSymbol;
+    operation.push(this.getAttribute("id"));
+    operation.shift();
+  } else {
+    operation.push(this.getAttribute("id"));
+    operation.shift();
+    displayExpressionLine.textContent += currentInput + operationSymbol;
+  }
+
+  if (storedInput === "") {
+    storedInput = currentInput;
+    currentInput = "";
+  }
+
+  if (currentInput !== "") {
+    calculate(storedInput, currentInput, operation[0]);
+    storedInput = result;
+    displayInputLine.textContent = result;
+  }
+
+  currentInput = "";
 }
 
 equalBtn.addEventListener("click", function () {
   if (!isOn) return;
-  calculate(storedInput, currentInput, operation);
-  displayExpressionLine.textContent += `${currentInput}=`;
+  if (storedInput == "") {
+    result = currentInput;
+  } else {
+    calculate(storedInput, currentInput, operation[1]);
+  }
   displayInputLine.textContent = result;
-  reset();
+  displayExpressionLine.textContent += `${currentInput}=`;
   isEqualPressed = true;
 });
 
+// Calculation functions
 function calculate(a, b, c) {
   switch (c) {
     case "divide":
@@ -110,7 +143,6 @@ function calculate(a, b, c) {
 function divide(a, b) {
   result = a / b;
   let resultString = String(result).length;
-
   if (resultString > 13) {
     result = result.toFixed(13 - (String(result.toFixed()).length + 1));
   }
@@ -123,7 +155,6 @@ function multiply(a, b) {
 
 function subtract(a, b) {
   result = a - b;
-
   return result;
 }
 
@@ -131,3 +162,6 @@ function sum(a, b) {
   result = +a + +b;
   return result;
 }
+
+// Other operations
+sqrtBtn.onclick = () => {};
