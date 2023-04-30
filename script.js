@@ -1,4 +1,4 @@
-// Catturo gli elementi
+// Elements capture
 const solarCells = document.querySelector("#solar-cell");
 const buttons = document.querySelectorAll("button");
 const displayExpressionLine = document.querySelector("#expression-line");
@@ -59,13 +59,29 @@ function typeNumber(digit) {
   if (currentInput.length < 13) {
     if (digit === "." && String(currentInput).includes(".")) return;
     currentInput += `${digit}`;
+
+    // prevent zeros before the number
+    if (currentInput[0] === "0") {
+      if (currentInput.length > 1) {
+        if (currentInput[1] === "0") {
+          currentInput = currentInput.slice(0, 1);
+        } else if (currentInput[1] !== "." && currentInput[1] !== "0") {
+          currentInput = currentInput.replace(/^[0]*/g, "");
+        }
+      }
+    } else if (currentInput[0] === ".") {
+      currentInput = "0.";
+    }
+
     displayInputLine.textContent = currentInput;
   }
+  isMemoryPressed = false;
 }
 
 deleteBtn.onclick = deleteDigit;
 
 function deleteDigit() {
+  isMemoryPressed = false;
   if (isEqualPressed) {
     setDefaulValue();
     displayExpressionLine.textContent = "";
@@ -82,10 +98,12 @@ for (let i = 0; i < buttons.length; i++) {
   if (buttons[i].getAttribute("data-type") === "operation") {
     buttons[i].addEventListener("click", function () {
       let operationSymbol;
-      if (this.textContent.trim() !== "/") {
-        operationSymbol = this.textContent.trim();
-      } else {
+      if (this.textContent.trim() === "/") {
         operationSymbol = "÷";
+      } else if (this.innerHTML.trim() === "x<sup>y</sup>") {
+        operationSymbol = "^";
+      } else {
+        operationSymbol = this.textContent.trim();
       }
       applyOperation(operationSymbol);
     });
@@ -94,11 +112,14 @@ for (let i = 0; i < buttons.length; i++) {
 
 function applyOperation(operationSymbol) {
   if (!isOn) return;
+  isMemoryPressed = false;
   let chosenOperation;
   if (operationSymbol === "+") chosenOperation = "sum";
   if (operationSymbol === "-") chosenOperation = "subtract";
   if (operationSymbol === "x") chosenOperation = "multiply";
   if (operationSymbol === "÷") chosenOperation = "divide";
+  if (operationSymbol === "%") chosenOperation = "percent";
+  if (operationSymbol === "^") chosenOperation = "power";
 
   if (isEqualPressed) {
     isEqualPressed = false;
@@ -120,6 +141,13 @@ function applyOperation(operationSymbol) {
   }
 
   if (currentInput !== "") {
+    if (operation[1] === "percent") {
+      if (operation[0] === "sum" || operation[0] === "subtract") {
+        currentInput = (storedInput * currentInput) / 100;
+      } else {
+        currentInput = currentInput / 100;
+      }
+    }
     calculate(storedInput, currentInput, operation[0]);
     storedInput = result;
     displayInputLine.textContent = result;
@@ -131,6 +159,7 @@ function applyOperation(operationSymbol) {
 equalBtn.addEventListener("click", calcResult);
 
 function calcResult() {
+  isMemoryPressed = false;
   if (!isOn || isEqualPressed) return;
   if (storedInput == "") {
     result = currentInput;
@@ -157,6 +186,9 @@ function calculate(a, b, c) {
       break;
     case "sum":
       sum(a, b);
+      break;
+    case "power":
+      power(a, b);
       break;
   }
   result = checkResultLenght(result);
@@ -186,9 +218,15 @@ function sum(a, b) {
   return result;
 }
 
+function power(a, b) {
+  result = (+a) ** +b;
+  return result;
+}
+
 // Other operations
 
 oppositeBtn.onclick = () => {
+  isMemoryPressed = false;
   result = Number(displayInputLine.textContent) * -1;
   currentInput = result;
   displayInputLine.textContent = result;
@@ -197,33 +235,32 @@ oppositeBtn.onclick = () => {
 memoryPlusBtn.onclick = () => {
   storedMemory += Number(displayInputLine.textContent);
   currentInput = "";
-  console.log(storedMemory);
 };
 
 memoryMinusBtn.onclick = () => {
   storedMemory -= Number(displayInputLine.textContent);
   currentInput = "";
-  console.log(storedMemory);
 };
 
 memoryRecallBtn.onclick = () => {
+  currentInput = "";
   if (isMemoryPressed) {
     storedMemory = 0;
     isMemoryPressed = false;
     reset();
-    console.log(storedMemory);
     return;
   }
   displayInputLine.textContent = storedMemory;
   displayExpressionLine.textContent = "";
   isMemoryPressed = true;
-  console.log(storedMemory);
 };
 
 sqrtBtn.onclick = () => {
+  isMemoryPressed = false;
   result = Number(displayInputLine.textContent);
   if (result < 0) {
     displayInputLine.textContent = "error";
+    setDefaulValue();
   } else {
     result = Math.sqrt(result);
     result = checkResultLenght(result);
@@ -234,9 +271,11 @@ sqrtBtn.onclick = () => {
 };
 
 factorialBtn.onclick = () => {
+  isMemoryPressed = false;
   result = Number(displayInputLine.textContent);
   if (result % 1 !== 0) {
     displayInputLine.textContent = "only integer";
+    setDefaulValue();
   } else {
     if (result === 0 || result === 1) return 1;
     for (let i = result - 1; i >= 1; i--) {
@@ -279,13 +318,13 @@ function checkExpressionLineLenght(exp) {
 }
 
 solarCells.onmouseenter = () => {
-  displayInputLine.style.opacity = "0.5";
-  displayExpressionLine.style.opacity = "0.5";
+  displayInputLine.classList.add("lightless");
+  displayExpressionLine.classList.add("lightless");
 };
 
 solarCells.onmouseleave = () => {
-  displayInputLine.style.opacity = "1";
-  displayExpressionLine.style.opacity = "1";
+  displayInputLine.classList.remove("lightless");
+  displayExpressionLine.classList.remove("lightless");
 };
 
 // keyboard input
@@ -316,6 +355,20 @@ document.addEventListener("keypress", (e) => {
   }
 });
 
+// automatic power off
+let timer = setTimeout(powerOff, 10000);
+
+document.addEventListener("click", powerOff);
+document.addEventListener("keypress", powerOff);
+
+function powerOff() {
+  clearTimeout(timer);
+  timer = setTimeout(function () {
+    setDefaulValue();
+    displayExpressionLine.textContent = "";
+    displayInputLine.textContent = "";
+    isOn = false;
+  }, 10000);
+}
+
 // funzioni mancanti
-// riduzione opacità con dito sul sensore
-// spegnimento automatico

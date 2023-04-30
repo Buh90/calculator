@@ -85,6 +85,12 @@ body {
   align-items: center;
   color: rgba(0, 0, 0, 0.7);
   font-family: "Share Tech Mono", monospace;
+  transition: 0.5s;
+}
+
+#expression-line.lightless,
+#input-line.lightless {
+  opacity: 0.5;
 }
 
 #expression-line {
